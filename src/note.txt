@@ -1,0 +1,22 @@
+推理配置参数E = 模型结构超参数EngineConfig.model_config + 引擎初始化参数EngineConfig + 引擎运行时参数EngineForwardConfig
+model_config
+    hidden_size 隐藏维度 
+    intermediate MLP中间维度，升维维度 
+    num_hidden_layers FNN层数
+    num_attention_heads Q头数量 
+    num_key_value_heads GQA的KV头数 
+引擎初始化参数：
+    model: str # 模型路径，定位加载指定的模型
+    context_len: int = 2048 # 最大上下文窗口
+    enforce_eager: bool = True # 执行eager,不适用CUDA Graph
+    dtype: str = "auto"# 量化选项
+引擎运行时参数：
+    prompt,
+    max_new_tokens 
+    temperature 
+    top_p 
+    top_k 
+
+V[B,S,H,D] @ O[1,1,H,D]:
+token级的头间聚合：对B*S 个token分别计算相同索引(B,S)下的V(H,D) @ O(H,D)；矩阵O(H,D)在逻辑上复制B*S份，或者说B*S个V(B,S)共用同一个O(H,D)做乘法
+*torch.Tensor在低于-2的维度上只能进行逐元素独立运算。任意维度张量[...,D-2,D-1]都等价于三维张量[Batch,D-2,D-1]，(...,D-3)是(D-2,D-1)矩阵的索引  
