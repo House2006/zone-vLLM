@@ -11,6 +11,8 @@ from .kernels.rotary import RotaryEmbedding
 from .kernels.attention import Attention
 from .kernels.activation import SiluAndMul
 
+from .model_loader import default_weight_loader
+
 class Qwen3MLP(nn.Module):
     def __init__(self, config:Qwen3Config) -> None:
         super().__init__()
@@ -113,3 +115,53 @@ class Qwen3ForCausalLM(nn.Module):
     
     def compute_logits(self,hidden_states:torch.Tensor) -> torch.Tensor:
         return self.lm_head(hidden_states)
+
+    def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> None:
+        # weights: (权重名, 权重张量) 序列；QKV 分片先合并，其余直接拷贝
+        # 把模型权重填写到params指定位置
+        params = dict(self.named_parameters())
+        # 已填入的参数项   
+        loaded = set()
+        # 取首层的自注意力模块得到QKV大小
+        attn0 = cast(Qwen3Attention, self.model.layers[0].self_attention)
+        # HF 的 q/k/v 按以下偏移（start,lenth) 写入本项目融合后的 qkv_proj
+        qkv_slices = {
+            "q_proj": (0, attn0.q_total_dim),
+            "k_proj": (attn0.q_total_dim, attn0.kv_total_dim),
+            "v_proj": (attn0.q_total_dim + attn0.kv_total_dim, attn0.kv_total_dim),
+        }
+        # 已填入的QKV参数分片
+        qkv_shards_seen = {}
+
+        for name, w in weights:
+            stem = name.removesuffix(".weight")
+            leaf = stem.rsplit(".", 1)[-1] 
+            if leaf in qkv_slices:
+                # 把 name 中的 "q"/"k"/"v" 统一替换成 "qkv"，fused代表某层的qkv_proj
+                fused = stem.rsplit(".", 1)[0] + ".qkv_proj.weight" 
+                off, size = qkv_slices[leaf]
+                # 切片写入融合权重，copy_ 同时完成精度转换
+                with torch.no_grad():
+                    # 将分片写入qkv_proj对应偏移，_copy()按照params[:].dtype自动转换精度
+                    params[fused][off : off + size].copy_(w)
+                    # 每写入一个Q/K/V就让对应层的计数加1
+                qkv_shards_seen[fused] = qkv_shards_seen.get(fused, 0) + 1
+            elif name in params:
+                default_weight_loader(params[name], w)
+                loaded.add(name)
+
+        for fused, seen in qkv_shards_seen.items():
+            # 凑齐QKV 三片全部到齐才算加载完成，否则missing会剩余fused
+            if seen == len(qkv_slices):
+                loaded.add(fused)
+
+        if "lm_head.weight" not in loaded and "model.embed_tokens.weight" in loaded:
+            # 权重共享：embed_tokens 与 lm_head 绑定，复用已加载的词嵌入
+            default_weight_loader(
+                params["lm_head.weight"], params["model.embed_tokens.weight"]
+            )
+            loaded.add("lm_head.weight")
+        missing = set(params) - loaded
+        if missing:
+            preview = ", ".join(sorted(missing)[:8])
+            raise ValueError(f"checkpoint is missing {len(missing)} model weights: {preview}")

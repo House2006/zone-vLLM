@@ -13,11 +13,11 @@ from tqdm.auto import tqdm
 
 __all__ = [
     "init_context",
+    "default_weight_loader",
     "load_model",
-    "safetensors_weights_iterator",
 ]
 
-# ----------------模型侧：参数张量初始化----------------
+# --------------- 模型侧：参数张量初始化配置，将缓冲区数据写入模型----------------
 
 def _skip_reset_parameters(self: nn.Module) -> None:
     """用于替换 Linear/Embedding 的随机初始化"""
@@ -47,8 +47,20 @@ def init_context(
         nn.Linear.reset_parameters = linear_reset
         nn.Embedding.reset_parameters = embedding_reset
 
+def default_weight_loader(param: torch.Tensor, loaded_weight: torch.Tensor) -> None:
+    """将 loaded_weight 拷贝到 param，校验形状并转换 dtype"""
+    if param.shape != loaded_weight.shape:
+        raise ValueError(
+            f"shape mismatch: {tuple(param.shape)} != {tuple(loaded_weight.shape)}"
+        )
+    # copy_ 会按 param.dtype 自动转换
+    with torch.no_grad():
+        param.copy_(loaded_weight)
 
-# ----------------文件侧：加载权重到内存----------------
+
+
+
+# ----------------文件侧：流式加载权重到内存缓冲区----------------
 
 def _weight_files(folder: Path) -> list[Path]:
     """统计所有权重文件的路径"""

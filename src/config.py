@@ -23,6 +23,7 @@ class EngineConfig:
             raise TypeError(f"expected a Qwen3 config, got {type(model_config).__name__}")
         self.model_config = model_config
         # 初始化模型时传入 Qwen3ForCausalLM
+
 @dataclass
 class ForwardConfig:
     prompt: str
