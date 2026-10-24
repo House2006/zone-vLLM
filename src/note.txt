@@ -20,3 +20,89 @@ model_config
 V[B,S,H,D] @ O[1,1,H,D]:
 token级的头间聚合：对B*S 个token分别计算相同索引(B,S)下的V(H,D) @ O(H,D)；矩阵O(H,D)在逻辑上复制B*S份，或者说B*S个V(B,S)共用同一个O(H,D)做乘法
 *torch.Tensor在低于-2的维度上只能进行逐元素独立运算。任意维度张量[...,D-2,D-1]都等价于三维张量[Batch,D-2,D-1]，(...,D-3)是(D-2,D-1)矩阵的索引  
+
+@dataclass
+@contextmanager
+
+__all__
+getattr()
+type()
+isinstance()
+all(),any()
+
+typing:
+    typing.Protocol
+    typing.TypeVar
+    typing.cast()
+
+os.environ.get()
+
+pathlib.Path:
+    Path.home()
+    Path path: 
+        path/"string"
+        path.expanduser()
+        path.is_dir() , path.is_file()
+        path.glob()
+        path.stat()
+        path.read_text()
+
+transformers.AutoConfig.from_pretrained()
+transformers.models.qwen3.Qwen3Config
+safetensors.safe_open()
+
+torch:
+    torch.finfo()
+    torch.get_default_dtype()
+    torch.set_default_dtype()
+    torch.device()
+    torch.no_grad()
+    
+    --------张量管理--------
+    # 函数式风格 
+    torch.ones()
+    torch.zeros()
+    torch.empty_like()
+    torch.arrange()
+    torch.where()
+    torch.clamp()
+    torch.index_select()
+    torch.cat()
+    torch.outer()
+    torch.softmax()
+    torch.multinomial()
+    # 面向对象风格 
+    torch.Tensor tensor:        
+        tensor.shape
+        tensor.size()
+        tensor.contiguous()
+        tensor.reshape()
+        tensor.flatten()
+        tensor.unflatten()
+        tensor.squeeze()
+        tensor.unsqueeze()
+        tensor.gather()
+        tensor.scatter_()
+        tensor.copy_()
+        tensor.chunk()
+        tensor.masked_fill()
+        tensor.transpose()        
+        tensor.cumsum()        
+        tensor.argmax()
+        tensor.sort()        
+        tensor.to()
+    --------神经网络---------
+    torch.nn:
+        nn.Linear:
+            Linear.reset_parameters
+        nn.Embedding:
+            Embedding.reset_parameters
+        nn.Module:
+            Module model:
+                model.named_parameters()
+                model.named_buffers()
+                model.state_dict()
+                model.load_state_dict()
+        nn.ModuleList
+        nn.Parameter
+        nn.functional

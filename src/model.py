@@ -118,7 +118,7 @@ class Qwen3ForCausalLM(nn.Module):
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> None:
         # weights: (权重名, 权重张量) 序列；QKV 分片先合并，其余直接拷贝
-        # 把模型权重填写到params指定位置
+        # params: list[nn.Parameter]
         params = dict(self.named_parameters())
         # 已填入的参数项   
         loaded = set()
