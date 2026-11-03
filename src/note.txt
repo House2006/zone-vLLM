@@ -48,15 +48,24 @@ pathlib.Path:
         path.read_text()
 
 transformers.AutoConfig.from_pretrained()
-transformers.models.qwen3.Qwen3Config
+transformers.AutoTokenizer.from_pretrained()
 safetensors.safe_open()
+transformers.models.qwen3.Qwen3Config
 
-torch:
-    torch.finfo()
-    torch.get_default_dtype()
-    torch.set_default_dtype()
-    torch.device()
-    torch.no_grad()
+torch:   
+    
+    obj：    
+        torch.device("cpu")
+        torch.Size([1,2,3])
+        torch.dtype：torch.float32,torch.int64,...
+    func:
+        torch.finfo(dtype).min
+        torch.get_default_dtype()
+        torch.set_default_dtype()
+        with torch.device("cpu")
+        torch.cuda.is_available()    
+        torch.no_grad()
+        torch.inference_mode()
     
     --------张量管理--------
     # 函数式风格 
@@ -64,6 +73,7 @@ torch:
     torch.zeros()
     torch.empty_like()
     torch.arrange()
+    torch.tensor()
     torch.where()
     torch.clamp()
     torch.index_select()

@@ -14,8 +14,8 @@ class Sampler:
         if  top_ps is None and top_ks is None:
             return torch.argmax(logits, dim=-1)
         
-        # temperature=0 视为贪心
-        if temperatures is not None and torch.all(temperatures == 0):
+        # temperature<=0 视为贪心
+        if temperatures is not None and torch.all(temperatures <= 0):
             return torch.argmax(logits, dim=-1)
 
         logits = logits.float()

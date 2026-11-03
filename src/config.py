@@ -24,13 +24,7 @@ class EngineConfig:
         self.model_config = model_config
         # 初始化模型时传入 Qwen3ForCausalLM
 
-@dataclass
-class ForwardConfig:
-    prompt: str
-    max_new_tokens: int = 200
-    temperature: float = 0.9
-    top_p: float = 0.95
-    top_k: int = 20
+ 
 
 
 
