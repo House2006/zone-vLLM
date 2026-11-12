@@ -16,9 +16,9 @@ from .model_loader import default_weight_loader
 class Qwen3MLP(nn.Module):
     def __init__(self, config:Qwen3Config) -> None:
         super().__init__()
-        self.gate_proj = nn.Linear(config.hidden_size,config.intermediate,bias=False)
-        self.up_proj = nn.Linear(config.hidden_size,config.intermediate,bias=False)
-        self.down_proj = nn.Linear(config.config.intermediate,config.hidden_size,bias=False)
+        self.gate_proj = nn.Linear(config.hidden_size,config.intermediate_size,bias=False)
+        self.up_proj = nn.Linear(config.hidden_size,config.intermediate_size,bias=False)
+        self.down_proj = nn.Linear(config.intermediate_size,config.hidden_size,bias=False)
         self.activate_func = SiluAndMul()
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         return self.down_proj(self.activate_func.forward(self.gate_proj(x),self.up_proj(x)))
@@ -32,7 +32,7 @@ class Qwen3Attention(nn.Module):
         
         configured_head_dim = getattr(config,"head_dim",None)
         self.head_dim = (configured_head_dim if configured_head_dim is not None
-                        else config.hidden_dim)
+                        else config.hidden_size // self.q_head_num)
         self.q_total_dim = self.q_head_num * self.head_dim
         self.kv_total_dim = self.kv_head_num * self.head_dim
 
@@ -98,7 +98,9 @@ class Qwen3Model(nn.Module):
         # 独热编码 + 嵌入矩阵降维
         hidden_states = self.embed_tokens(input_ids) 
         # 首层残差传入0张量
-        hidden_states, residual = self.layers(hidden_states,torch.zeros(hidden_states.shape))
+        residual = torch.zeros_like(hidden_states)
+        for layer in self.layers:
+            hidden_states, residual = layer(hidden_states, residual, positions)
         # 最终残差相加和归一化，丢弃残差
         hidden_states, _ = self.last_norm(hidden_states,residual)
         return hidden_states
@@ -131,28 +133,33 @@ class Qwen3ForCausalLM(nn.Module):
             "v_proj": (attn0.q_total_dim + attn0.kv_total_dim, attn0.kv_total_dim),
         }
         # 已填入的QKV参数分片
-        qkv_shards_seen = {}
+        qkv_shards_seen: dict[str, set[str]] = {}
 
         for name, w in weights:
-            stem = name.removesuffix(".weight")
+            mapped_name = name.replace(".self_attn.", ".self_attention.")
+            if mapped_name == "model.norm.weight":
+                mapped_name = "model.last_norm.weight"
+            stem = mapped_name.removesuffix(".weight")
             leaf = stem.rsplit(".", 1)[-1] 
             if leaf in qkv_slices:
                 # 把 name 中的 "q"/"k"/"v" 统一替换成 "qkv"，fused代表某层的qkv_proj
                 fused = stem.rsplit(".", 1)[0] + ".qkv_proj.weight" 
                 off, size = qkv_slices[leaf]
+                if fused not in params:
+                    raise KeyError(f"checkpoint weight has no model parameter: {fused}")
                 # 切片写入融合权重，copy_ 同时完成精度转换
                 with torch.no_grad():
                     # 将分片写入qkv_proj对应偏移，_copy()按照params[:].dtype自动转换精度
                     params[fused][off : off + size].copy_(w)
                     # 每写入一个Q/K/V就让对应层的计数加1
-                qkv_shards_seen[fused] = qkv_shards_seen.get(fused, 0) + 1
-            elif name in params:
-                default_weight_loader(params[name], w)
-                loaded.add(name)
+                qkv_shards_seen.setdefault(fused, set()).add(leaf)
+            elif mapped_name in params:
+                default_weight_loader(params[mapped_name], w)
+                loaded.add(mapped_name)
 
         for fused, seen in qkv_shards_seen.items():
             # 凑齐QKV 三片全部到齐才算加载完成，否则missing会剩余fused
-            if seen == len(qkv_slices):
+            if seen == set(qkv_slices):
                 loaded.add(fused)
 
         if "lm_head.weight" not in loaded and "model.embed_tokens.weight" in loaded:

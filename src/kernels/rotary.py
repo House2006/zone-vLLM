@@ -9,6 +9,7 @@ def _rotate(x:torch.Tensor,sin:torch.Tensor,cos:torch.Tensor)->torch.Tensor:
 
 class RotaryEmbedding(nn.Module):
     def __init__ (self, head_size:int, rotary_dim:int, max_pos:int, base:float):
+        super().__init__()
         # q, k, v 维度
         # rotary_dim 参与旋转编码的维度
         # max_pos 查找表支持的最大序列长度

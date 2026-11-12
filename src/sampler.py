@@ -65,8 +65,9 @@ def _apply_top_p(sorted_logits: torch.Tensor, top_p: torch.Tensor) -> torch.Tens
     # softmax 得到概率分布
     probs = sorted_logits.softmax(dim=-1)
     
-    #  只保留前缀和小于等于 p 的部分
+    # 保留累计概率达到阈值的那个 token
     mask = probs.cumsum(dim=-1) > p.unsqueeze(1)
+    mask[:, 1:] = mask[:, :-1].clone()
     mask[:, 0] = False  # 至少保留一个元素
     # 将超出 p 的部分置为 -inf
     min_val = torch.finfo(sorted_logits.dtype).min

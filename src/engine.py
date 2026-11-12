@@ -69,11 +69,11 @@ class Engine:
         
         ids = list(prompt) if isinstance(prompt,list) else self.tokenizer.encode(prompt)
         context_len = self.config.context_len
-        # 截断到 input_ids长度
+        # 截断到 input_ids的长度，塞进去
         if len(ids) >= context_len:
             ids = ids[-context_len:]
         input_ids = torch.empty((1,context_len),dtype=torch.long,device=self.device)
-        input_ids[:len(ids)] = torch.tensor(ids,dtype=torch.long,device=self.device)
+        input_ids[0,:len(ids)] = torch.tensor(ids,dtype=torch.long,device=self.device)
         positions = torch.arange(context_len,dtype=torch.long,device=self.device).unsqueeze(0)
         cur_len = len(ids)
         pending: list[int] = []

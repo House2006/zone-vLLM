@@ -16,7 +16,7 @@ class EngineConfig:
     context_len: int = 2048
     enforce_eager: bool = True
 
-    def _post__init_(self) -> None:
+    def __post_init__(self) -> None:
         self.model_path = path.expanduser(self.model_path)
         model_config = AutoConfig.from_pretrained(self.model_path,trust_remote_code=True)
         if not isinstance(model_config,Qwen3Config):

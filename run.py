@@ -24,7 +24,7 @@ from src.model_hub import (  # noqa: E402
 DEFAULTS = {
     "model": "Qwen3-0.6B",
     "prompt": "Hello, my name is",
-    "max_new_tokens": 200,
+    "max_new_tokens": 500,
     "temperature": 0.9,
     "top_p": 0.95,
     "top_k": 20,

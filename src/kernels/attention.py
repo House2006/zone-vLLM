@@ -5,6 +5,7 @@ from torch import nn
 
 class Attention(nn.Module):
     def __init__(self, head_size:int, head_num:int, kv_head_num:int):
+        super().__init__()
         self.head_num = head_num
         self.kv_head_num = kv_head_num
         self.scaling = head_size ** -0.5

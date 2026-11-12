@@ -8,7 +8,7 @@ def load_config(path: Path, defaults: dict) -> dict:
     if path.is_file():
         with open(path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
-    else:
+    else: 
         cfg = {}
     return {k: cfg.get(k, v) for k, v in defaults.items()}
 
